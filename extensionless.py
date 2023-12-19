@@ -3,19 +3,40 @@ import click
 import json
 
 
+def validate_json_file(path):
+    try:
+        with open(path, "r", encoding="utf-8") as file:
+            return json.load(file)
+    except FileNotFoundError:
+        raise click.ClickException(f"JSON file not found at {path}")
+    except json.JSONDecodeError:
+        raise click.ClickException("JSON file is corrupted")
+
+def validate_directory(ctx, param, value):
+    if not os.path.isdir(value):
+        raise click.BadParameter("Path is not a valid directory")
+    return value
+
+def validate_statistics(ctx, param, value):
+    if value not in ['0', '1']:
+        raise click.BadParameter("Statistics must be 0 or 1")
+    return value == '1'
+
 @click.command()
-# list of possible options
 @click.option('--directory', prompt='Enter a path for investigation',
-              help='A whole path')
+              help='A whole path', callback=validate_directory)
 @click.option('--statistics', prompt='Enter 1 if you need statistics of directory content, 0 if you do not',
-              help='Enter 1 or 0')
-
-
+              help='Enter 1 or 0', type=click.Choice(['0', '1']))
 def investigate(directory, statistics):
     """Program that investigates the directory for files without any extension."""
-    # Gets information from JSON file
+    
+    # Convert statistics to boolean
+    statistics = statistics == '1'
+
+    # Resolve paths and files
     abspath = os.path.abspath(os.path.dirname(__file__))
-    data = json.loads(open(os.path.join(abspath, "data.json"), "r", encoding="utf-8").read())
+    data_file_path = os.path.join(abspath, "data.json")
+    data = validate_json_file(data_file_path)
 
     # Params used in statistics:
     stat = {}
